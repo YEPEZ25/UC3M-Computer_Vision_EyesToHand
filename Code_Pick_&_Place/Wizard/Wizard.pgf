@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="ISO-8859-1" ?>
+<Program>
+	<Module>Wizard_LoadData.modx</Module>
+	<Module>VisionPickPlace.modx</Module>
+	<Module>Wizard.modx</Module>
+	<Module>CalibData.modx</Module>
+</Program>

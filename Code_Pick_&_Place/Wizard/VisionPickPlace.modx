@@ -1,0 +1,245 @@
+MODULE VisionPickPlace
+    !************************************************************
+    ! Module:  VisionPickPlace
+    !
+    ! Description:
+    !   This code create a server that listen connection request of a client
+    !   The client is a vision system that detect the position of objects and
+    !   send the coordinates to RW for picking them.
+    !
+    ! Autor: Johnny Yépez
+    ! Revisado por: Edwin Oña
+    !
+    ! Version: 1.0
+    !
+    !*********************************************************** 
+
+    VAR socketdev serverSocket;
+    VAR socketdev clientSocket;
+    VAR string data;
+    VAR bool keep_listening := TRUE;
+    !VAR bool mode_selected := FALSE;
+    
+    VAR bool okCant;
+    VAR bool okX;
+    VAR bool okY;
+    VAR bool okA;
+    VAR bool message_ok := FALSE;
+    
+    VAR num cant;
+    VAR num cambioStrX;
+    VAR num cambioStrY;
+    VAR num cambioAngle;
+    
+    VAR num pal_x := 0;
+    VAR num pal_y := 0; 
+    
+    VAR num pos1:=0;                         ! Posición de la primera coma
+    VAR num pos2:=0;                         ! Posición de la segunda coma
+    VAR num pos3:=0;                         ! Posición de la tercera coma
+    
+    VAR string CantValorString;
+    VAR string XValorString;
+    VAR string YValorString;    
+    VAR string AValorString; 
+    VAR string run;
+    
+    VAR string client_ip := "192.168.125.1";!"127.0.0.1";! Set the IP of the WAN port of the real robot 192.168.0.91  
+    !Process' variables
+    CONST robtarget ptoReposo:=[[450,450,450],[0.00369802,-0.0635767,-0.997904,-0.0114608],[0,0,0,0],[9E+09,9E+09,9E+09,9E+09,9E+09,9E+09]];
+    !CONST robtarget ptoPick:=[[190.152964329,689.995892332,56.318084196],[-0.00000001,0.000000013,1,-0.000000005],[0,0,0,0],[9E+09,9E+09,9E+09,9E+09,9E+09,9E+09]];
+    CONST robtarget ptoAux:=[[821.79,256.69,275.32],[0.0104281,0.00222188,-0.999427,-0.0321206],[0,0,0,0],[9E+09,9E+09,9E+09,9E+09,9E+09,9E+09]];
+    VAR robtarget ptoCamara := ptoAux;
+    CONST robtarget ptoDejar:=[[217.95,684.99,288.44],[5.07751E-05,0.397625,-0.917548,6.16976E-05],[0,-1,0,0],[9E+09,9E+09,9E+09,9E+09,9E+09,9E+09]];
+
+    VAR jointtarget pHome;
+    
+    PROC main()
+        VAR num i;
+        cant := 10;
+        i := 1;
+        WHILE i<=6 DO
+            ! Mueve al robot a la posición "Home" (inicial)        
+            MoveHomePosition i;   
+            WaitTime 1;
+            i := i+1;
+        ENDWHILE 
+        !Add your code here ****************************************************
+        ! Crear un bucle para reiniciar el proceso
+        SocketCreate serverSocket; !Create a temp_socket
+        SocketBind serverSocket, client_ip, 1025;
+        SocketListen serverSocket; 
+        !WaitTime 10;
+        SocketAccept serverSocket,clientSocket,\Time:=WAIT_MAX;
+        RESTART:
+        Reset Local_IO_0_DO1; 
+        WHILE run <> "run" DO
+            SocketReceive clientSocket \Str:= run; 
+        ENDWHILE 
+        WaitTime 1;
+!        SocketReceive clientSocket \Str:= data;        
+!        IF data <> "" THEN 
+!            okCant:=StrToVal(data,cant);
+!        ENDIF
+        
+!        WHILE NOT mode_selected DO 
+!            IF NOT message_ok THEN
+!                TPWrite "Seleccione el modo de trabajo";
+!                message_ok := TRUE;
+!            ENDIF
+!            IF Local_IO_0_DI1 = 1 THEN
+!                SocketSend clientSocket \Str:="Cercano";
+!                mode_selected := TRUE;
+!                message_ok := FALSE;
+!                keep_listening := TRUE;
+!            ELSEIF Local_IO_0_DI2 = 1 THEN
+!                SocketSend clientSocket \Str:="Lejano";
+!                mode_selected := TRUE;
+!                message_ok := FALSE;
+!                keep_listening := TRUE;
+!            ENDIF
+!        ENDWHILE
+!        WaitTime 1;
+        SocketSend clientSocket \Str:="orange";
+        WaitTime 1; 
+
+        WHILE keep_listening DO
+            IF cant = 0 THEN
+                piezas := 0;  ! Resetear piezas
+                !mode_selected := FALSE;
+                !message_ok := FALSE; 
+                keep_listening := FALSE;
+                TPWrite "Lote completado, reiniciando...";
+                WaitTime 1;
+                SocketSend clientSocket \Str:="finish";
+                WaitTime 1;
+                !SocketSend clientSocket \Str:="Lote completado, reiniciando...";
+                ! No cerramos el socket, solo reiniciamos el proceso
+                GOTO RESTART;  ! Vuelve al inicio del proceso
+            ELSE
+                SocketSend clientSocket \Str:="ready";                
+            ENDIF
+            SocketReceive clientSocket \Str:= data;
+            IF data <> "" THEN
+                ! Encontrar las posiciones de las comas
+                pos1 := StrFind(data, ChPos:=1, Set:=",");
+                pos2 := StrFind(data, ChPos:=pos1 + 1, Set:=",");
+                pos3 := StrFind(data, ChPos:=pos2 + 1, Set:=",");
+                ! Extraer subcadenas
+                
+                CantValorString := StrPart(data, 1, pos1 - 1);
+                XValorString := StrPart(data, pos1 + 1, pos2 - pos1 - 1);
+                YValorString := StrPart(data, pos2 + 1, StrLen(data) - pos2);
+                !YValorString := StrPart(data, pos2 + 1, pos3 - pos2 - 1);
+                !AValorString := StrPart(data, pos3 + 1, StrLen(data) - pos3);  ! Excluir el salto de lÃ­nea
+            
+                ! Convertir cada subcadena en número
+                okCant:=StrToVal(CantValorString,cant);
+                okX:=StrToVal(XValorString,cambioStrX);
+                okY:=StrToVal(YValorString,cambioStrY);
+                !okA:=StrToVal(AValorString,cambioAngle);
+                !cambioAngle := cambioAngle - 38.0; !compensar el desfase de la herramienta
+            ENDIF
+            
+            ptoCamara.trans.x := cambioStrX; !Actualizamos coordenada X mm
+            ptoCamara.trans.y := cambioStrY; !Actualizamos coordenada y mm
+            !datosentrada;
+            recogerPieza;
+            !WaitTime 10;
+            !piezas := piezas + 1;
+            cant := cant - 1;
+        ENDWHILE
+        SocketClose clientSocket;
+        SocketClose serverSocket;
+        
+        ! Error handler for power fail and connection lost
+        ERROR
+            IF ERRNO=ERR_SOCK_TIMEOUT THEN
+                RETRY;
+            ELSEIF ERRNO=ERR_SOCK_CLOSED THEN
+                SocketClose clientSocket;
+                SocketClose serverSocket;
+                SocketCreate serverSocket;
+                SocketBind serverSocket, client_ip, 1025;
+                SocketListen serverSocket;
+                SocketAccept serverSocket, clientSocket;
+                SocketSend clientSocket \Str:="GoFa Reconnected";
+                SocketReceive clientSocket \Str:= data;
+                data := "";
+                RETRY;
+            ELSE
+                TPWrite "ERRNO = "\Num:=ERRNO;
+                Stop;
+            ENDIF
+    ENDPROC
+    
+    PROC datosentrada()
+        IF lote = 0 THEN
+            lote := 10;
+        ENDIF
+        IF paletizado<50 OR paletizado>320 THEN
+            paletizado := 160;
+        ENDIF
+    ENDPROC
+    
+    PROC recogerPieza()
+        ConfJ\Off;
+        ConfL\Off;
+        MoveJ ptoReposo,v100,z10,tool0\WObj:=wobj0;
+        Reset Local_IO_0_DO1;
+        MoveJ RelTool(ptoCamara,0,0,-100 \Rz:=cambioAngle),v100,fine,tool0\WObj:=wobj0;
+        !MoveJ Offs(ptoCamara,0,0,100),v100,z10,tool0\WObj:=wobj0;
+        MoveL RelTool(ptoCamara,0,0,10 \Rz:=cambioAngle),v50,fine,tool0\WObj:=wobj0;
+        !MoveL Offs(ptoCamara,0,0,0),v50,fine,tool0\WObj:=wobj0;
+        WaitTime(1);
+        Set Local_IO_0_DO1;
+        WaitTime(1);
+        !MoveJ Offs(ptoCamara,0,0,100),v100,z10,tool0\WObj:=wobj0;
+        MoveL RelTool(ptoCamara,0,0,-100 \Rz:=cambioAngle),v50,fine,tool0\WObj:=wobj0;
+        MoveJ ptoReposo,v100,z10,tool0\WObj:=wobj0;
+        MoveJ Offs(ptoDejar,-pal_x,-pal_y,100),v100,z10,tool0\WObj:=wobj0;
+        MoveL Offs(ptoDejar,-pal_x,-pal_y,0),v50,fine,tool0\WObj:=wobj0;
+        WaitTime(1);
+        Reset Local_IO_0_DO1;
+        WaitTime(1);
+        MoveJ Offs(ptoDejar,-pal_x,-pal_y,100),v100,z10,tool0\WObj:=wobj0;
+        MoveJ ptoReposo,v100,z10,tool0\WObj:=wobj0;
+        
+        pal_x := pal_x + paletizado;
+        IF pal_x > 320 THEN
+            pal_y := pal_y + 160;
+            IF pal_y > 320 THEN
+                pal_y := 0;
+            ENDIF
+            pal_x := 0;
+        ENDIF
+    ENDPROC
+    
+    ! --- Movimiento "Home" ---
+    PROC MoveHomePosition(num i)
+        pHome := CJointT();
+        ! Verificamos y corregimos el rango de los ejes
+        IF i=1 THEN
+            pHome.robax.rax_1 := 0;
+        ELSEIF i = 2 THEN
+            pHome.robax.rax_2 := 0;
+        ELSEIF i = 3 THEN
+            pHome.robax.rax_3 := 0;     
+        ELSEIF i = 4 THEN
+            pHome.robax.rax_4 := 0;           
+        ELSEIF i = 5 THEN
+            pHome.robax.rax_5 := 0;           
+        ELSEIF i = 6 THEN
+            pHome.robax.rax_6 := 0;                
+        ENDIF
+        MoveAbsJ pHome, v100, fine, tool0;
+    ENDPROC
+    
+ENDMODULE
+
+
+
+    
+
+
+    

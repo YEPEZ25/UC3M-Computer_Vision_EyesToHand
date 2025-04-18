@@ -1,0 +1,95 @@
+MODULE MainModule
+    
+    VAR socketdev serversocketData;  ! Variable para el socket del servidor
+    VAR socketdev serverSocketFruit;
+    VAR socketdev clientSocketData;  ! Variable para el socket del cliente
+    VAR socketdev clientSocketFruit;
+    VAR bool okX;                ! Variable booleana para verificar la conversión de datos en X
+    VAR bool okY;                ! Variable booleana para verificar la conversión de datos en Y
+    VAR bool continuar:=TRUE;
+    VAR string data;             ! Variable para almacenar los datos recibidos del cliente
+    VAR string fruit;
+    VAR string datos;   
+    VAR num cambioStrX;          ! Variable numérica que almacenará el valor convertido de X
+    VAR num cambioStrY;          ! Variable numérica que almacenará el valor convertido de Y
+    VAR string XFruit;     ! Variable string que almacenará la parte de la cadena correspondiente a X
+    VAR string YFruit;     ! Variable string que almacenará la parte de la cadena correspondiente a Y
+    VAR string XValorString;     ! Variable string que almacenará la parte de la cadena correspondiente a X
+    VAR string YValorString;
+    VAR num cambioStrXFinal;
+    VAR num cambioStrYFinal;
+    VAR bool fruitReceived := FALSE;
+    CONST robtarget punto_ref:=[[800,50,0],[0,1,0,0],[0,-1,0,0],[9E+09,9E+09,9E+09,9E+09,9E+09,9E+09]];
+    CONST robtarget reposo:=[[833.194801163,272.319794491,333.646141335],[0.094233018,0.008882324,-0.994935956,0.033818414],[0,-1,0,0],[9E+09,9E+09,9E+09,9E+09,9E+09,9E+09]];
+    PROC main()
+   ! Crear un socket para el servidor
+         SocketCreate serverSocketData;
+         SocketCreate serverSocketFruit;
+        ! Asignar una dirección IP y un puerto al socket del servidor
+        ! En este caso, se usa la IP local "127.0.0.1" y el puerto 8000
+        SocketBind serverSocketData, "127.0.0.1", 8000;
+        SocketBind serverSocketFruit, "127.0.0.1", 8001;
+
+        ! Configurar el socket para escuchar conexiones entrantes
+        SocketListen serverSocketData;
+        SocketListen serverSocketFruit;
+
+        ! Aceptar una conexión entrante y asignarla a 'clientSocket'
+        ! 'WAIT_MAX' indica que el programa esperará indefinidamente hasta que llegue una conexión
+        SocketAccept serverSocketFruit, clientSocketFruit, \Time:=WAIT_MAX;
+        SocketAccept serverSocketData, clientSocketData, \Time:=WAIT_MAX;
+
+       MoveJ reposo,v1000,z100,MyTool\WObj:=wobj0;
+        ! Esperar hasta recibir la fruta seleccionada
+        WHILE NOT fruitReceived DO
+            
+            SocketReceive clientSocketFruit \str:=fruit;
+            IF fruit <> "" THEN
+                TPWrite "Fruta seleccionada: " + fruit;
+                fruitReceived := TRUE;
+            ENDIF
+        ENDWHILE
+        
+   
+      
+        WHILE continuar DO
+     
+        ! Bucle que se ejecuta siempre
+            ! Recibir datos enviados desde el cliente y almacenarlos en la variable 'data'
+            SocketReceive clientSocketData \str:=data;
+            !datos:= StrPart(data,1,29);
+ 
+            ! Extraer los primeros 3 caracteres de 'data' y asignarlos a XValorString. Rxtrae de data, empezando por el 1, 3 caracteres.
+            XFruit := StrPart(data,2,3);
+
+            ! Convertir la cadena de X a un valor numérico y almacenarlo en 'cambioStrX'
+            ! 'okX' será TRUE si la conversión fue exitosa, FALSE si falló
+            okX:= StrToVal(XFruit, cambioStrX);
+
+            ! Extraer los caracteres 4 a 6 de 'data' y asignarlos a YValorString
+            YFruit := StrPart(data,6,3);
+
+            ! Convertir la cadena de Y a un valor numérico y almacenarlo en 'cambioStrY'
+            ! 'okY' será TRUE si la conversión fue exitosa, FALSE si falló
+            okY:=StrToVal(YFruit, cambioStrY);  
+            cambioStrXFinal:=((cambioStrX)*0.5);
+            cambioStrYFinal:=((cambioStrY)*0.5);
+            TPWrite "Orange (" + XFruit + ")" + "(" + YFruit + ")"; 
+            MoveJ Offs(punto_ref,cambioStrXFinal,cambioStrYFinal,5),v1000,fine,MyTool;
+            WaitTime(0.5);
+        
+            
+            
+            
+            !TPWrite YValorString;
+        
+
+            ! Esperar 2 segundos antes de repetir el ciclo
+
+
+        ENDWHILE
+
+
+    ENDPROC
+ENDMODULE
+

@@ -1,0 +1,5 @@
+MODULE Wizard
+    PERS num paletizado;
+    PERS num lote;
+    PERS num piezas;
+ENDMODULE

@@ -91,7 +91,7 @@ To ensure accurate object position detection, the camera is calibrated using a *
 
 ### 🧭 Flowchart of the Calibration Process
 
-![Camera Calibration Flowchart](./Results/camera_calibration_flowchart.png)
+<!-- ![Camera Calibration Flowchart](./Results/camera_calibration_flowchart.png)-->
 
 ---
 
@@ -171,7 +171,7 @@ The `code_socket_pick&place.py` script performs the object detection and coordin
 
 ### **Flujograma (Flowchart)**
 
-![Object Detection and Pick&Place Flowchart](sandbox:/mnt/data/A_flowchart_in_the_image_illustrates_a_camera_cali.png)
+<!--![Object Detection and Pick&Place Flowchart](sandbox:/mnt/data/A_flowchart_in_the_image_illustrates_a_camera_cali.png)-->
 
 This flowchart visually represents the sequence of operations from camera setup, object detection, position calculation, and communication with the robot to perform a Pick&Place task.
 
@@ -190,7 +190,7 @@ This flowchart visually represents the sequence of operations from camera setup,
 
 ## 📸 Calibration Example
 
-![Checkerboard](https://upload.wikimedia.org/wikipedia/commons/8/88/Checkerboard_pattern.svg)
+![Checkerboard](./Results/detection.png)
 
 ---
 

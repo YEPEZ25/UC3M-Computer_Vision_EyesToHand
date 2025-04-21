@@ -26,7 +26,7 @@ while resolution not in ["720", "480"]:
 
 fruit = input("Ingrese la fruta a mover: ").strip().upper()
 
-cam_index = 1  # Cambiar según la cámara deseada
+cam_index = 0  # Cambiar según la cámara deseada
 robotID = "41"  # Cambiar según el robot deseado    
 resolution = "720"  # Cambiar según la resolución deseada
 # Cargar calibración
@@ -61,8 +61,8 @@ def connect_socket():
     while True:
         try:
             s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            #s.connect(("192.168.125.1", 1025))
-            s.connect(("127.0.0.1", 1025))
+            s.connect(("192.168.125.1", 1025))
+            #s.connect(("127.0.0.1", 1025))
             print("[✔] Conectado al servidor.")
             return s
         except Exception as e:
@@ -119,7 +119,7 @@ while True:
         rx, ry = real_world[0][0]
 
         if label.lower() == fruit.lower(): #fruit_name:
-            matched_fruits.append((rx, ry))
+            matched_fruits.append((rx, ry, 0.0))# Ángulo 0 para frutas (no se calcula)
 
         # Visual
         cv2.rectangle(undistorted, (x1, y1), (x2, y2), (0, 255, 0), 2)
@@ -143,19 +143,29 @@ while True:
             if count > 0:
                 # Elegir la fruta más cercana (menor distancia euclidiana al origen)
                 closest = min(matched_fruits, key=lambda p: np.hypot(p[0], p[1]))
-                data_str = f"{count},{int(closest[1])+camera_offset_x},{int(closest[0])+camera_offset_y}"
+                x = int(closest[1]) + camera_offset_x
+                y = int(closest[0]) + camera_offset_y
+                angle = round(closest[2], 2)
+                data_str = f"{count},{x},{y},{angle}"                
+                #data_str = f"{count},{int(closest[1])+camera_offset_x},{int(closest[0])+camera_offset_y}"
                 conn.sendall(data_str.encode())
                 print(f"[📤] Enviado: {data_str.strip()}")
-            #else:
-                #conn.sendall(f"0,-1,-1\n".encode())
-                #print(f"[📤] Enviado: 0,-1,-1")
+            else:
+                count = 0
+                x = 800
+                y = 0
+                angle = round(closest[2], 2)
+                data_str = f"{count},{x},{y},{angle}"                
+                #data_str = f"{count},{int(closest[1])+camera_offset_x},{int(closest[0])+camera_offset_y}"
+                conn.sendall(data_str.encode())
+                print(f"[📤] Enviado: {data_str.strip()}")
 
         elif msg == "finish":
             print("[🔁] Reiniciando con nueva fruta...")
-            conn.sendall("run".encode())
             fruit_name = conn.recv(128).decode('utf-8').strip().lower()
             fruit = input("Ingrese la fruta a mover: ").strip().lower()
             print(f"[🟡] Nueva fruta objetivo: {fruit}")
+            #conn.sendall("run".encode())
             #print(f"[🟡] Nueva fruta objetivo: {fruit_name}")
 
     except socket.timeout:

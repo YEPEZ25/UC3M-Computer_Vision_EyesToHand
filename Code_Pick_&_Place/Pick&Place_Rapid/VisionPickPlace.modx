@@ -71,6 +71,7 @@ MODULE VisionPickPlace
         !WaitTime 10;
         SocketAccept serverSocket,clientSocket,\Time:=WAIT_MAX;
         RESTART:
+        keep_listening := TRUE;
         Reset Local_IO_0_DO1; 
         WHILE run <> "run" DO
             SocketReceive clientSocket \Str:= run; 
@@ -101,25 +102,11 @@ MODULE VisionPickPlace
 !        WaitTime 1;
         SocketSend clientSocket \Str:="orange";
         WaitTime 1; 
-
+        data := "";
         WHILE keep_listening DO
-            IF cant = 0 THEN
-                piezas := 0;  ! Resetear piezas
-                !mode_selected := FALSE;
-                !message_ok := FALSE; 
-                keep_listening := FALSE;
-                TPWrite "Lote completado, reiniciando...";
-                WaitTime 1;
-                SocketSend clientSocket \Str:="finish";
-                WaitTime 1;
-                !SocketSend clientSocket \Str:="Lote completado, reiniciando...";
-                ! No cerramos el socket, solo reiniciamos el proceso
-                GOTO RESTART;  ! Vuelve al inicio del proceso
-            ELSE
-                SocketSend clientSocket \Str:="ready";                
-            ENDIF
+            SocketSend clientSocket \Str:="ready"; 
             SocketReceive clientSocket \Str:= data;
-            IF data <> "" THEN
+            IF data <> "" OR data <> "run" THEN
                 ! Encontrar las posiciones de las comas
                 pos1 := StrFind(data, ChPos:=1, Set:=",");
                 pos2 := StrFind(data, ChPos:=pos1 + 1, Set:=",");
@@ -128,6 +115,7 @@ MODULE VisionPickPlace
                 
                 CantValorString := StrPart(data, 1, pos1 - 1);
                 XValorString := StrPart(data, pos1 + 1, pos2 - pos1 - 1);
+                !YValorString := StrPart(data, pos2 + 1, StrLen(data) - pos2);
                 YValorString := StrPart(data, pos2 + 1, pos3 - pos2 - 1);
                 AValorString := StrPart(data, pos3 + 1, StrLen(data) - pos3);  ! Excluir el salto de lÃ­nea
             
@@ -141,11 +129,26 @@ MODULE VisionPickPlace
             
             ptoCamara.trans.x := cambioStrX; !Actualizamos coordenada X mm
             ptoCamara.trans.y := cambioStrY; !Actualizamos coordenada y mm
-            !datosentrada;
-            recogerPieza;
-            !WaitTime 10;
-            !piezas := piezas + 1;
-            cant := cant - 1;
+            
+            IF cant = 0 THEN
+                piezas := 0;  ! Resetear piezas
+                !mode_selected := FALSE;
+                !message_ok := FALSE; 
+                keep_listening := FALSE;
+                TPWrite "Lote completado, reiniciando...";
+                WaitTime 1;
+                SocketSend clientSocket \Str:="finish";
+                WaitTime 1;
+                !SocketSend clientSocket \Str:="Lote completado, reiniciando...";
+                ! No cerramos el socket, solo reiniciamos el proceso
+                GOTO RESTART;  ! Vuelve al inicio del proceso
+            ELSE
+                !datosentrada;
+                recogerPieza;
+                !WaitTime 10;
+                !piezas := piezas + 1;   
+                !cant := cant - 1;
+            ENDIF
         ENDWHILE
         GOTO RESTART; 
         !SocketClose clientSocket;
@@ -240,10 +243,3 @@ MODULE VisionPickPlace
     ENDPROC
     
 ENDMODULE
-
-
-
-    
-
-
-    
